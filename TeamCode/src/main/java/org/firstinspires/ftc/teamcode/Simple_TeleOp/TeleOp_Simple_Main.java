@@ -1,28 +1,36 @@
 package org.firstinspires.ftc.teamcode.Simple_TeleOp;
 
-import static android.os.SystemClock.sleep;
-
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.teamcode.HardwareNames;
 
 
+/**
+ * Simple backup TeleOp. Each mechanism motor is on its own button and only runs while held.
+ *
+ * Controls (gamepad1):
+ *   Left stick    - drive forward/back and strafe (mecanum)
+ *   Right stick x - turn
+ *   A - intake (also pushes nectar up to the nectar shooter)
+ *   B - transfer (pushes pollen up to the pollen shooter)
+ *   X - nectar shooter
+ *   Y - pollen shooter
+ *   D-pad down - reverse intake and transfer (unjam)
+ */
+@TeleOp(name = "Simple TeleOp (Backup)")
 public class TeleOp_Simple_Main extends OpMode {
+    // Mechanism powers (0.0 - 1.0) - tune on the robot
+    static final double INTAKE_POWER = 1.0;
+    static final double TRANSFER_POWER = 1.0;
+    static final double NECTAR_SHOOTER_POWER = 1.0;
+    static final double POLLEN_SHOOTER_POWER = 1.0;
+
     DcMotorEx frontLeft, frontRight, backLeft, backRight;
     DcMotorEx intake, transfer;
-    DcMotorEx shooter_pollen, shooter_nectar;
-    Servo arm_1;
-    Servo arm_2;
-
-    double distance;
-    double targetVelocity;
-    boolean shoot = false;
-    boolean openHold = false;
+    DcMotorEx shooter_nectar, shooter_pollen;
 
 
     @Override
@@ -30,60 +38,32 @@ public class TeleOp_Simple_Main extends OpMode {
         setHardwareMappings();
         setMotorsDirections();
         setMotorsBehaviors();
-        setPidfCoefficients();
-        robotCentricDrive();
     }
 
     @Override
     public void loop() {
+        robotCentricDrive();
 
-        if (gamepad1.a) { // Pollen Shooter
-            double error = targetVelocity - shooter_pollen.getVelocity();
-
-            shoot = Math.abs(error) < 100;
-            if (shoot){
-                setShooterPower(1);
-            }
-            else {
-                setShooterPower(0.5);
-            }
-
+        if (gamepad1.dpad_down) {
+            intake.setPower(-INTAKE_POWER);
+            transfer.setPower(-TRANSFER_POWER);
         } else {
-            setShooterPower(0);
-            shoot = false;
+            intake.setPower(gamepad1.a ? INTAKE_POWER : 0);
+            transfer.setPower(gamepad1.b ? TRANSFER_POWER : 0);
         }
+        shooter_nectar.setPower(gamepad1.x ? NECTAR_SHOOTER_POWER : 0);
+        shooter_pollen.setPower(gamepad1.y ? POLLEN_SHOOTER_POWER : 0);
 
-        openHold = shoot;
-
-        if (openHold) {
-            arm_1.setPosition(0.2);
-            sleep(100);
-            transfer.setPower(1);
-            intake.setPower(-1);
-
-        } else {
-            arm_1.setPosition(0.82);
-        }
-
-        if (gamepad1.right_trigger > 0.3) {
-            intake.setPower(-1);
-            transfer.setPower(1);
-        } else if (gamepad1.left_trigger > 0.3) {
-            intake.setPower(1);
-            transfer.setPower(-1);
-        } else {
-            if (!openHold) {
-                transfer.setPower(0);
-                intake.setPower(0);
-            }
-        }
-
+        telemetry.addData("Intake (A)", intake.getPower());
+        telemetry.addData("Transfer (B)", transfer.getPower());
+        telemetry.addData("Nectar shooter (X)", shooter_nectar.getPower());
+        telemetry.addData("Pollen shooter (Y)", shooter_pollen.getPower());
+        telemetry.update();
     }
 
     private void robotCentricDrive() {
-        /// drive code
-        double y = gamepad1.left_stick_y; // Forward
-        double x = -gamepad1.left_stick_x; // Strafe
+        double y = -gamepad1.left_stick_y; // Forward (stick y is negative when pushed up)
+        double x = gamepad1.left_stick_x * 1.1; // Strafe, scaled to counter imperfect strafing
         double rx = gamepad1.right_stick_x; // Rotate
 
         double frontLeftPower = y + x + rx;
@@ -91,72 +71,30 @@ public class TeleOp_Simple_Main extends OpMode {
         double frontRightPower = y - x - rx;
         double backRightPower = y + x - rx;
 
-        // Optional: Normalize powers if exceeding 1.0
+        // Keep all powers in [-1, 1] while preserving their ratios
         double max =
-                Math.max(
+                Math.max(1.0, Math.max(
                         Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower)),
-                        Math.max(Math.abs(backLeftPower), Math.abs(backRightPower)));
-        if (max > 1.0) {
-            frontLeftPower /= max;
-            backLeftPower /= max;
-            frontRightPower /= max;
-            backRightPower /= max;
-        }
+                        Math.max(Math.abs(backLeftPower), Math.abs(backRightPower))));
 
-        frontLeft.setPower(frontLeftPower);
-        backLeft.setPower(backLeftPower);
-        frontRight.setPower(frontRightPower);
-        backRight.setPower(backRightPower);
-    }
-
-    private void rotate(double rx) {
-        double frontLeftPower = rx;
-        double backLeftPower = rx;
-        double frontRightPower = 0 - rx;
-        double backRightPower = 0 - rx;
-
-        double max =
-                Math.max(
-                        Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower)),
-                        Math.max(Math.abs(backLeftPower), Math.abs(backRightPower)));
-
-        if (max > 1.0) {
-            frontLeftPower /= max;
-            backLeftPower /= max;
-            frontRightPower /= max;
-            backRightPower /= max;
-        }
-
-        frontLeft.setPower(frontLeftPower);
-        backLeft.setPower(backLeftPower);
-        frontRight.setPower(frontRightPower);
-        backRight.setPower(backRightPower);
-    }
-    private void setShooterPower(double power) {
-        shooter_pollen.setPower(power);
-        shooter_nectar.setPower(power);
-    }
-
-    private void setPidfCoefficients() {
-        PIDFCoefficients shooterPIDF = new PIDFCoefficients(75, 0.3, 0, 18);
-        shooter_pollen.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
-        shooter_nectar.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
+        frontLeft.setPower(frontLeftPower / max);
+        backLeft.setPower(backLeftPower / max);
+        frontRight.setPower(frontRightPower / max);
+        backRight.setPower(backRightPower / max);
     }
 
     private void setHardwareMappings() {
-        frontLeft = hardwareMap.get(DcMotorEx.class, "FrontLeft");
-        frontRight = hardwareMap.get(DcMotorEx.class, "FrontRight");
-        backLeft = hardwareMap.get(DcMotorEx.class, "BackLeft");
-        backRight = hardwareMap.get(DcMotorEx.class, "BackRight");
+        // Control Hub
+        frontLeft = hardwareMap.get(DcMotorEx.class, HardwareNames.FRONT_LEFT);
+        frontRight = hardwareMap.get(DcMotorEx.class, HardwareNames.FRONT_RIGHT);
+        backLeft = hardwareMap.get(DcMotorEx.class, HardwareNames.BACK_LEFT);
+        backRight = hardwareMap.get(DcMotorEx.class, HardwareNames.BACK_RIGHT);
 
-        intake = hardwareMap.get(DcMotorEx.class, "Intake");
-        shooter_pollen = hardwareMap.get(DcMotorEx.class, "Shooter1");
-        shooter_nectar = hardwareMap.get(DcMotorEx.class, "Shooter2");
-        transfer = hardwareMap.get(DcMotorEx.class, "Transfer");
-
-        arm_1 = hardwareMap.get(Servo.class, "hold");
-        arm_2 = hardwareMap.get(Servo.class, "kicker");
-
+        // Expansion Hub
+        intake = hardwareMap.get(DcMotorEx.class, HardwareNames.INTAKE);
+        transfer = hardwareMap.get(DcMotorEx.class, HardwareNames.TRANSFER);
+        shooter_nectar = hardwareMap.get(DcMotorEx.class, HardwareNames.NECTAR_SHOOTER);
+        shooter_pollen = hardwareMap.get(DcMotorEx.class, HardwareNames.POLLEN_SHOOTER);
     }
 
     private void setMotorsBehaviors() {
@@ -165,34 +103,34 @@ public class TeleOp_Simple_Main extends OpMode {
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        // other motors
-        transfer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        // turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        // other motors - shooters coast so flywheels spin down on their own
         intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        shooter_pollen.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        shooter_pollen.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        transfer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         shooter_nectar.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        shooter_nectar.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        shooter_pollen.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-        // drive motor modes
+        // Plain power control everywhere - works even if an encoder cable is loose
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        // other motor modes
         intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         transfer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        shooter_nectar.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        shooter_pollen.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     private void setMotorsDirections() {
-        frontLeft.setDirection(DcMotor.Direction.FORWARD);
-        backLeft.setDirection(DcMotor.Direction.FORWARD);
-        frontRight.setDirection(DcMotor.Direction.REVERSE);
-        backRight.setDirection(DcMotor.Direction.REVERSE);
-        intake.setDirection(DcMotor.Direction.REVERSE);
-        shooter_pollen.setDirection(DcMotor.Direction.FORWARD);
+        // Standard goBILDA mecanum setup: left side reversed.
+        // If the robot drives backward when you push forward, swap all four.
+        frontLeft.setDirection(DcMotor.Direction.REVERSE);
+        backLeft.setDirection(DcMotor.Direction.REVERSE);
+        frontRight.setDirection(DcMotor.Direction.FORWARD);
+        backRight.setDirection(DcMotor.Direction.FORWARD);
+        // Flip any of these if that mechanism spins the wrong way
+        intake.setDirection(DcMotor.Direction.FORWARD);
+        transfer.setDirection(DcMotor.Direction.FORWARD);
         shooter_nectar.setDirection(DcMotor.Direction.REVERSE);
+        shooter_pollen.setDirection(DcMotor.Direction.FORWARD);
     }
 }
-

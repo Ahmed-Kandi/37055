@@ -4,14 +4,16 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
+import org.firstinspires.ftc.teamcode.HardwareNames;
+
 public class Intake extends SubsystemBase {
 
     private final Motor intakeMotor;
     private final Motor transferMotor;
 
     public Intake(HardwareMap hardwareMap) {
-        intakeMotor = new Motor(hardwareMap, "intake");
-        transferMotor = new Motor(hardwareMap, "transfer");
+        intakeMotor = new Motor(hardwareMap, HardwareNames.INTAKE);
+        transferMotor = new Motor(hardwareMap, HardwareNames.TRANSFER);
     }
 
     public void run(double power, String motor) {

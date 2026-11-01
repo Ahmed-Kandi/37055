@@ -5,6 +5,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.HardwareNames;
+
 /**
  * ShooterSubsystem
  *
@@ -22,8 +24,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 public class ShooterSubsystem {
 
     // ----- Config names (must match your Driver Station robot config) -----
-    public static final String NECTAR_MOTOR_NAME = "nectarMotor";
-    public static final String POLLEN_MOTOR_NAME = "pollenMotor";
+    public static final String NECTAR_MOTOR_NAME = HardwareNames.NECTAR_SHOOTER;
+    public static final String POLLEN_MOTOR_NAME = HardwareNames.POLLEN_SHOOTER;
 
     // ----- Default shoot powers (0.0 - 1.0), tune to your flywheel/gearing -----
     public static final double NECTAR_SHOOT_POWER = 0.8;
