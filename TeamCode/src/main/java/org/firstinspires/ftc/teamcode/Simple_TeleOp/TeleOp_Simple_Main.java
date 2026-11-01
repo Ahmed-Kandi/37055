@@ -4,6 +4,7 @@ import static android.os.SystemClock.sleep;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -11,7 +12,7 @@ import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
-
+@TeleOp(name="Simple TeleOp", group="TeleOp - Scrimmage 1")
 public class TeleOp_Simple_Main extends OpMode {
     DcMotorEx frontLeft, frontRight, backLeft, backRight;
     DcMotorEx intake, transfer;
